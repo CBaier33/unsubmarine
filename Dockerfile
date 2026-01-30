@@ -15,6 +15,8 @@ WORKDIR /app
 
 COPY --from=builder /app/unsubmarine /app/unsubmarine
 
+COPY unsubmarine.html /app/unsubmarine.html
+
 RUN adduser -D appuser 
 USER appuser 
 

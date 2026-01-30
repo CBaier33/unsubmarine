@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"html"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +15,10 @@ const (
 	logFileName  = "unsubmarine.log"
 	internalPort = "8080"
 )
+
+type UnsubscribeData struct {
+    Email string
+}
 
 func main() {
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -32,7 +36,7 @@ func main() {
 func unsubscribeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only GET Requests accepted
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -68,14 +72,23 @@ func unsubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Retrieve landing page
+	tmpl, err := template.ParseFiles("unsubmarine.html")
+	if err != nil {
+			log.Printf("ERROR: Failed to load landing page: %v", err)
+			http.Error(w, "<h1>Error</h1><p>Your request could not be processed.</p>", http.StatusInternalServerError)
+			return
+	}
+
 	// Serve Confirmation Page
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	safeEmail := html.EscapeString(email)
+	data := UnsubscribeData{
+			Email: email,
+	}
 
-	fmt.Fprintf(w, `
-<!DOCTYPE html>  <html lang="en">  <head>  <meta charset="UTF-8">  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Unsubscribe Confirmation</title>  <style>  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; color: #343a40; margin: 0; }  .container { text-align: center; padding: 2rem; border-radius: 8px; background-color: #ffffff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }  h1 { color: #007bff; }  p { font-size: 1.1rem; }  .email { font-weight: bold; color: #e83e8c; }  </style>  </head>  <body>  <div class="container">  <h1>Unsubscribe Confirmed</h1>  <p>Your address, <span class="email">%s</span>, has been successfully removed from our mailing list.</p>  <p>Thank you.</p>  </div>  </body>  </html> 
-		`, safeEmail)
+	tmpl.Execute(w, data)
 
 }
